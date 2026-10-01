@@ -10,55 +10,87 @@ try {
   console.error('home: products unavailable', err);
 }
 
-const heart = `<svg viewBox="0 0 100 90" fill="none" aria-hidden="true"><path d="M50 84C20 60 6 44 6 27 6 14 16 6 28 6c9 0 17 5 22 13C55 11 63 6 72 6c12 0 22 8 22 21 0 17-14 33-44 57Z" fill="#8d0f4b"/></svg>`;
+// Next Feb 14 (rolls over the day after). The client script below keeps it ticking in the visitor's timezone.
+function countdown(now = new Date()) {
+  let target = new Date(now.getFullYear(), 1, 14);
+  if (target <= now) target = new Date(now.getFullYear() + 1, 1, 14);
+  const ms = +target - +now;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return [
+    { value: String(Math.floor(ms / 864e5)), label: 'Days' },
+    { value: pad(Math.floor(ms / 36e5) % 24), label: 'Hours' },
+    { value: pad(Math.floor(ms / 6e4) % 60), label: 'Min' },
+    { value: pad(Math.floor(ms / 1e3) % 60), label: 'Sec' },
+  ];
+}
 ---
-<Base>
-  <div class="wrap">
-    <section class="hero panel">
-      <div>
-        <p class="eyebrow">Keepsakes for two</p>
-        <h1>Gifts that speak to the heart</h1>
-        <p>Valenversary is the day you chose each other. Celebrate it every year with pieces made to be kept.</p>
-        <a class="btn solid" href="/shop">Shop the collection <span class="dot">↗</span></a>
+<Base overlayHeader>
+  <section class="hero">
+    <div class="hero-ghost" aria-hidden="true">Valenversary</div>
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <p class="eyebrow">A celebration of love &amp; time</p>
+        <h1>Valen<span class="accent">versary</span></h1>
+        <p class="hero-lede">Where Valentine's Day meets Anniversary — a day twice as sacred, twice as tender, boundlessly ours.</p>
+        <div class="hero-ctas">
+          <a class="btn white" href="#products">Shop the Collection <span class="dot">↗</span></a>
+        </div>
       </div>
-      <div class="hero-art" set:html={heart} />
-    </section>
-
-    <section class="story" id="story">
-      <div class="story-art" set:html={heart} />
-      <div>
-        <p class="eyebrow">Our story</p>
-        <h2>A holiday of your own</h2>
-        <p>Some anniversaries are tied to a date on a certificate. A Valenversary is tied to a feeling: the moment you knew. Make it a tradition worth marking.</p>
-        <a class="btn" href="/shop">Browse keepsakes <span class="dot">↗</span></a>
+      <div class="hero-art">
+        <div class="polaroid">
+          <div class="polaroid-inner">
+            <img src="/images/cupid-happy.webp" alt="Happy ball-and-chain cupid" width="800" height="899" />
+            <span class="tag-new">New</span>
+          </div>
+        </div>
       </div>
-    </section>
-
-    <section class="story flip">
-      <div class="story-art" set:html={heart} />
-      <div>
-        <p class="eyebrow">Made on demand</p>
-        <h2>Printed just for you</h2>
-        <p>Every piece is produced when you order, so nothing sits on a shelf. It arrives at your door ready to wrap.</p>
-      </div>
-    </section>
-  </div>
-
-  <section class="band">
-    <div class="wrap">
-      <h2>Love, renewed every year</h2>
-      <p>Pick something small, make it personal, and give it on your Valenversary.</p>
-      <div class="marquee" aria-hidden="true">Valentine · Anniversary · Forever</div>
     </div>
   </section>
 
-  <div class="wrap" style="padding-block: 5rem 1rem">
-    <div class="section-head">
-      <h2>Order with confidence</h2>
-      <a class="btn" href="/shop">Explore all <span class="dot">↗</span></a>
+  <section class="section" id="products">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="titles">
+          <p class="eyebrow">The Collection</p>
+          <h2>Shop the <span class="accent">Valenversary</span></h2>
+        </div>
+        <p class="lede">Gifts as extraordinary as the occasion.</p>
+      </div>
+      {products.length
+        ? <div class="grid">{products.map((p) => <ProductCard product={p} />)}</div>
+        : <div class="notice">New keepsakes are on the way. Check back soon.</div>}
+      <a class="btn center-cta" href="/shop">View All Products <span class="dot">↗</span></a>
     </div>
-    {products.length
-      ? <div class="grid">{products.map((p) => <ProductCard product={p} />)}</div>
-      : <div class="notice">New keepsakes are on the way. Check back soon.</div>}
-  </div>
+  </section>
+
+  <section class="countdown-row">
+    <div class="wrap">
+      <div class="countdown">
+        <p class="eyebrow">Until our next Valenversary</p>
+        <div class="units" id="countdown">
+          {countdown().map((u) => <div class="unit"><b>{u.value}</b><span>{u.label}</span></div>)}
+        </div>
+      </div>
+      <div class="moments" id="moments">
+        <h3>Share your Moments</h3>
+        <p>Drop a photo from your Valenversary.</p>
+        <button class="btn solid" type="button" disabled>Photo uploads coming soon <span class="dot">↗</span></button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const units = document.querySelectorAll<HTMLElement>('#countdown .unit b');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    function tick() {
+      const now = new Date();
+      let target = new Date(now.getFullYear(), 1, 14);
+      if (target <= now) target = new Date(now.getFullYear() + 1, 1, 14);
+      const ms = +target - +now;
+      const values = [String(Math.floor(ms / 864e5)), pad(Math.floor(ms / 36e5) % 24), pad(Math.floor(ms / 6e4) % 60), pad(Math.floor(ms / 1e3) % 60)];
+      units.forEach((el, i) => { el.textContent = values[i]; });
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </Base>
