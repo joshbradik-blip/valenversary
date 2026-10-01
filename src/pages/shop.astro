@@ -11,7 +11,7 @@ try {
   console.error('shop: products unavailable', err);
   failed = true;
 }
-Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=300');
+Astro.response.headers.set('Cache-Control', failed ? 'no-store' : 'public, max-age=0, s-maxage=300');
 ---
 <Base title="Shop" description="Browse Valenversary keepsakes.">
   <div class="wrap" style="padding-block: 3rem 2rem">
