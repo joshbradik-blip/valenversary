@@ -80,11 +80,22 @@ export async function getProduct(id: number | string): Promise<Product> {
   };
 }
 
-/** Server-trusted lookup of a single sync variant, used to price checkout. */
-export async function getVariant(syncVariantId: number | string) {
+/**
+ * Server-trusted lookup of a single sync variant, used to price checkout and quotes.
+ * When the product id is known we read it through the product endpoint (the same one the
+ * shop uses); otherwise we fall back to the single-variant endpoint.
+ */
+export async function getVariant(syncVariantId: number | string, productId?: number | string) {
+  if (productId !== undefined) {
+    const product = await getProduct(productId);
+    const found = product.variants.find((v) => String(v.id) === String(syncVariantId));
+    if (!found) throw new Error(`Variant ${syncVariantId} not found in product ${productId}`);
+    return { ...found, productName: product.name };
+  }
   const r = await pf<any>(`/store/variants/${syncVariantId}`);
-  const v = r.sync_variant;
-  return { ...mapVariant(v), productName: v.name as string };
+  const raw = r?.sync_variant ?? (r?.id ? r : undefined);
+  if (!raw) throw new Error(`Unexpected variant response (keys: ${Object.keys(r ?? {}).join(', ') || 'none'})`);
+  return { ...mapVariant(raw), productName: raw.name as string };
 }
 
 export interface Destination {
@@ -107,9 +118,9 @@ export interface ShippingRate {
 /** Live shipping quotes from Printful for the items in the cart. */
 export async function getShippingRates(
   dest: Destination,
-  items: { id: number; qty: number }[],
+  items: { id: number; qty: number; productId?: number }[],
 ): Promise<ShippingRate[]> {
-  const variants = await Promise.all(items.map((i) => getVariant(i.id)));
+  const variants = await Promise.all(items.map((i) => getVariant(i.id, i.productId)));
   const rates = await pf<any[]>('/shipping/rates', {
     method: 'POST',
     body: JSON.stringify({

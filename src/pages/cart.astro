@@ -132,7 +132,7 @@ import Base from '../layouts/Base.astro';
         const res = await fetch('/api/shipping', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), destination: destination() }),
+          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty, productId: i.productId })), destination: destination() }),
         });
         const body = await res.json();
         if (!res.ok) throw new Error([body.error ?? 'Could not get shipping', body.detail].filter(Boolean).join(' — '));
@@ -156,7 +156,7 @@ import Base from '../layouts/Base.astro';
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: readCart().map((i) => ({ id: i.id, qty: i.qty })),
+            items: readCart().map((i) => ({ id: i.id, qty: i.qty, productId: i.productId })),
             destination: destination(),
             shippingId: chosen.id,
           }),

@@ -2,12 +2,13 @@ import type { Destination } from './printful';
 
 export const COUNTRIES = ['US', 'CA'] as const;
 
-export function parseItems(raw: unknown): { id: number; qty: number }[] | null {
+export function parseItems(raw: unknown): { id: number; qty: number; productId?: number }[] | null {
   if (!Array.isArray(raw) || !raw.length || raw.length > 30) return null;
   for (const i of raw) {
     if (!Number.isInteger(i?.id) || !Number.isInteger(i?.qty) || i.qty < 1 || i.qty > 20) return null;
+    if (i.productId !== undefined && !Number.isInteger(i.productId)) return null;
   }
-  return raw.map((i) => ({ id: i.id, qty: i.qty }));
+  return raw.map((i) => ({ id: i.id, qty: i.qty, productId: i.productId }));
 }
 
 export function parseDestination(raw: any): Destination | null {
