@@ -6,25 +6,77 @@ import Base from '../layouts/Base.astro';
     <h1>Your cart</h1>
     <div id="lines"></div>
     <div id="summary" hidden>
-      <div class="total"><span>Subtotal</span><span id="subtotal"></span></div>
-      <p class="eyebrow">Shipping and taxes are calculated at checkout.</p>
-      <button class="btn solid" id="checkout">Checkout <span class="dot">↗</span></button>
+      <form id="ship-form" class="ship">
+        <p class="eyebrow">Ship to</p>
+        <div class="ship-row">
+          <select id="country" aria-label="Country"><option value="US">United States</option><option value="CA">Canada</option></select>
+          <input id="state" placeholder="State (e.g. CA)" maxlength="2" autocomplete="address-level1" required aria-label="State or province code" />
+          <input id="zip" placeholder="ZIP / postal code" maxlength="10" autocomplete="postal-code" required aria-label="ZIP or postal code" />
+          <button class="btn" type="submit">Get shipping</button>
+        </div>
+      </form>
+      <div id="rates" class="rates"></div>
+      <div class="sum-row"><span>Subtotal</span><span id="subtotal"></span></div>
+      <div class="sum-row"><span>Shipping</span><span id="shipping">—</span></div>
+      <div class="total"><span>Total</span><span id="total"></span></div>
+      <p class="eyebrow">Taxes, if any, are shown at checkout.</p>
+      <button class="btn solid" id="checkout" disabled>Checkout <span class="dot">↗</span></button>
       <div class="error" id="error" role="alert"></div>
     </div>
     <div id="empty" class="notice" hidden>Your cart is empty. <a href="/shop">Browse the shop</a>.</div>
   </div>
   <script>
-    import { onCartChange, setQty, money, type CartItem } from '../scripts/cart';
+    import { onCartChange, readCart, setQty, money, type CartItem } from '../scripts/cart';
 
     const lines = document.getElementById('lines')!;
     const summary = document.getElementById('summary')!;
     const empty = document.getElementById('empty')!;
+    const ratesBox = document.getElementById('rates')!;
+    const error = document.getElementById('error')!;
+    const button = document.getElementById('checkout') as HTMLButtonElement;
+
+    interface Rate { id: string; name: string; rateCents: number; minDays?: number; maxDays?: number }
+    let subtotal = 0;
+    let rates: Rate[] = [];
+    let chosen: Rate | null = null;
+    let quotedFor = '';
+
+    const destination = () => ({
+      country: (document.getElementById('country') as HTMLSelectElement).value,
+      state: (document.getElementById('state') as HTMLInputElement).value.trim(),
+      zip: (document.getElementById('zip') as HTMLInputElement).value.trim(),
+    });
+    const cartKey = (items: CartItem[]) => items.map((i) => `${i.id}x${i.qty}`).join(',');
+
+    function updateTotals() {
+      document.getElementById('subtotal')!.textContent = money(subtotal);
+      document.getElementById('shipping')!.textContent = chosen ? money(chosen.rateCents) : '—';
+      document.getElementById('total')!.textContent = money(subtotal + (chosen?.rateCents ?? 0));
+      button.disabled = !chosen;
+    }
+
+    function renderRates() {
+      ratesBox.replaceChildren();
+      for (const r of rates) {
+        const label = document.createElement('label');
+        label.className = 'rate';
+        const input = Object.assign(document.createElement('input'), { type: 'radio', name: 'rate', checked: chosen?.id === r.id });
+        input.addEventListener('change', () => { chosen = r; updateTotals(); });
+        const days = r.minDays && r.maxDays ? ` · ${r.minDays}–${r.maxDays} business days` : '';
+        const text = document.createElement('span');
+        text.textContent = `${r.name}${days}`;
+        const price = document.createElement('strong');
+        price.textContent = money(r.rateCents);
+        label.append(input, text, price);
+        ratesBox.append(label);
+      }
+    }
 
     function render(items: CartItem[]) {
       lines.replaceChildren();
       summary.hidden = items.length === 0;
       empty.hidden = items.length !== 0;
-      let subtotal = 0;
+      subtotal = 0;
       for (const i of items) {
         subtotal += i.priceCents * i.qty;
         const row = document.createElement('div');
@@ -54,27 +106,60 @@ import Base from '../layouts/Base.astro';
         row.append(img, info, price);
         lines.append(row);
       }
-      document.getElementById('subtotal')!.textContent = money(subtotal);
+      // A changed cart invalidates any earlier shipping quote.
+      if (quotedFor && quotedFor !== cartKey(items)) {
+        rates = []; chosen = null; quotedFor = '';
+        ratesBox.replaceChildren();
+      }
+      updateTotals();
     }
     onCartChange(render);
 
-    const button = document.getElementById('checkout') as HTMLButtonElement;
-    const error = document.getElementById('error')!;
+    document.getElementById('ship-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      error.textContent = '';
+      ratesBox.textContent = 'Checking rates…';
+      chosen = null;
+      updateTotals();
+      const items = readCart();
+      try {
+        const res = await fetch('/api/shipping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), destination: destination() }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body.error ?? 'Could not get shipping');
+        rates = body.rates;
+        quotedFor = cartKey(items);
+        chosen = rates[0] ?? null;
+        renderRates();
+        updateTotals();
+      } catch (err) {
+        ratesBox.replaceChildren();
+        error.textContent = err instanceof Error ? err.message : 'Could not get shipping';
+      }
+    });
+
     button.addEventListener('click', async () => {
+      if (!chosen) return;
       error.textContent = '';
       button.disabled = true;
       try {
-        const { readCart } = await import('../scripts/cart');
         const res = await fetch('/api/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: readCart().map((i) => ({ id: i.id, qty: i.qty })) }),
+          body: JSON.stringify({
+            items: readCart().map((i) => ({ id: i.id, qty: i.qty })),
+            destination: destination(),
+            shippingId: chosen.id,
+          }),
         });
         const body = await res.json();
         if (!res.ok || !body.url) throw new Error(body.error ?? 'Checkout failed');
         window.location.href = body.url;
-      } catch (e) {
-        error.textContent = e instanceof Error ? e.message : 'Checkout failed';
+      } catch (err) {
+        error.textContent = err instanceof Error ? err.message : 'Checkout failed';
         button.disabled = false;
       }
     });

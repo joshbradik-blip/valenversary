@@ -52,6 +52,8 @@ export const POST: APIRoute = async ({ request }) => {
       items,
     });
   } catch (err) {
+    // Stripe may redeliver an event; Printful rejects a repeated external_id, which means the order already exists.
+    if (err instanceof Error && /already exists|external_id/i.test(err.message)) return new Response('duplicate', { status: 200 });
     console.error('printful order failed', err);
     // A non-2xx makes Stripe retry the webhook.
     return new Response('order failed', { status: 500 });

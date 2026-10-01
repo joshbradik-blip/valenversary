@@ -4,6 +4,7 @@ const API = 'https://api.printful.com';
 
 export interface Variant {
   id: number;
+  catalogVariantId: number;
   name: string;
   priceCents: number;
   currency: string;
@@ -45,6 +46,7 @@ function mapVariant(v: any): Variant {
   const preview = v.files?.find((f: any) => f.type === 'preview')?.preview_url;
   return {
     id: v.id,
+    catalogVariantId: v.variant_id ?? v.product?.variant_id,
     name: v.name,
     priceCents: toCents(v.retail_price),
     currency: String(v.currency ?? 'USD').toLowerCase(),
@@ -83,6 +85,45 @@ export async function getVariant(syncVariantId: number | string) {
   const r = await pf<any>(`/store/variants/${syncVariantId}`);
   const v = r.sync_variant;
   return { ...mapVariant(v), productName: v.name as string };
+}
+
+export interface Destination {
+  country: string;
+  state?: string;
+  zip: string;
+}
+
+export interface ShippingRate {
+  id: string;
+  name: string;
+  rateCents: number;
+  currency: string;
+  minDays?: number;
+  maxDays?: number;
+}
+
+/** Live shipping quotes from Printful for the items in the cart. */
+export async function getShippingRates(
+  dest: Destination,
+  items: { id: number; qty: number }[],
+): Promise<ShippingRate[]> {
+  const variants = await Promise.all(items.map((i) => getVariant(i.id)));
+  const rates = await pf<any[]>('/shipping/rates', {
+    method: 'POST',
+    body: JSON.stringify({
+      recipient: { country_code: dest.country, state_code: dest.state || undefined, zip: dest.zip },
+      items: items.map((i, n) => ({ variant_id: variants[n].catalogVariantId, quantity: i.qty })),
+      currency: 'USD',
+    }),
+  });
+  return rates.map((r) => ({
+    id: String(r.id),
+    name: String(r.name),
+    rateCents: toCents(r.rate),
+    currency: String(r.currency ?? 'USD').toLowerCase(),
+    minDays: r.minDeliveryDays,
+    maxDays: r.maxDeliveryDays,
+  }));
 }
 
 export interface PrintfulOrderInput {
