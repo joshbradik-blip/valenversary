@@ -8,6 +8,10 @@ import Base from '../layouts/Base.astro';
     <div id="summary" hidden>
       <form id="ship-form" class="ship">
         <p class="eyebrow">Ship to</p>
+        <div class="ship-row ship-addr">
+          <input id="address1" placeholder="Street address" maxlength="100" autocomplete="address-line1" required aria-label="Street address" />
+          <input id="city" placeholder="City" maxlength="60" autocomplete="address-level2" required aria-label="City" />
+        </div>
         <div class="ship-row">
           <select id="country" aria-label="Country"><option value="US">United States</option><option value="CA">Canada</option></select>
           <input id="state" placeholder="State (e.g. CA)" maxlength="2" autocomplete="address-level1" required aria-label="State or province code" />
@@ -42,6 +46,8 @@ import Base from '../layouts/Base.astro';
     let quotedFor = '';
 
     const destination = () => ({
+      address1: (document.getElementById('address1') as HTMLInputElement).value.trim(),
+      city: (document.getElementById('city') as HTMLInputElement).value.trim(),
       country: (document.getElementById('country') as HTMLSelectElement).value,
       state: (document.getElementById('state') as HTMLInputElement).value.trim(),
       zip: (document.getElementById('zip') as HTMLInputElement).value.trim(),

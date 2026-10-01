@@ -12,7 +12,7 @@ export const POST: APIRoute = async ({ request }) => {
   const items = parseItems(payload?.items);
   const destination = parseDestination(payload?.destination);
   if (!items) return json({ error: 'Your cart is empty.' }, 400);
-  if (!destination) return json({ error: 'Enter a valid country, 2-letter state and ZIP/postal code.' }, 400);
+  if (!destination) return json({ error: 'Enter your street address, city, 2-letter state and ZIP/postal code.' }, 400);
 
   try {
     const rates = await getShippingRates(destination, items);

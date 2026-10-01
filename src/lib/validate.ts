@@ -11,11 +11,15 @@ export function parseItems(raw: unknown): { id: number; qty: number }[] | null {
 }
 
 export function parseDestination(raw: any): Destination | null {
+  const address1 = String(raw?.address1 ?? '').trim();
+  const city = String(raw?.city ?? '').trim();
   const country = String(raw?.country ?? '').toUpperCase();
   const state = String(raw?.state ?? '').toUpperCase().trim();
   const zip = String(raw?.zip ?? '').trim();
   if (!(COUNTRIES as readonly string[]).includes(country)) return null;
+  if (address1.length < 3 || address1.length > 100) return null;
+  if (city.length < 2 || city.length > 60) return null;
   if (!/^[A-Z]{2}$/.test(state)) return null;
   if (zip.length < 3 || zip.length > 10) return null;
-  return { country, state, zip };
+  return { address1, city, country, state, zip };
 }
