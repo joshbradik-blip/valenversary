@@ -20,6 +20,7 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ rates });
   } catch (err) {
     console.error('shipping failed', err);
-    return json({ error: 'We could not calculate shipping. Please check the address and try again.' }, 502);
+    const detail = err instanceof Error ? err.message : String(err);
+    return json({ error: 'We could not calculate shipping. Please check the address and try again.', detail }, 502);
   }
 };
