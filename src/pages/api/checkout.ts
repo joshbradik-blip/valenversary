@@ -26,7 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     // Prices and shipping always come from Printful, never from the browser.
-    const variants = await Promise.all(items.map((i) => getVariant(i.id)));
+    const variants = await Promise.all(items.map((i) => getVariant(i.id, i.productId)));
     if (variants.some((v) => !v.available)) return json({ error: 'An item in your cart is no longer available.' }, 409);
 
     const rates = await getShippingRates(destination, items);
