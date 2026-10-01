@@ -5,7 +5,7 @@ Storefront for ourvalenversary.com: Astro (server-rendered) on Netlify, Printful
 ## How it works
 
 - `/shop`, `/product/:id`: products are read live from the Printful API (cached for 5 minutes at the CDN).
-- `/cart`: cart lives in the browser. At checkout the browser sends only variant ids and quantities to `/api/checkout`, which prices every line from Printful and creates a Stripe Checkout session.
+- `/cart`: cart lives in the browser. The customer enters country, state and ZIP; `/api/shipping` returns live Printful shipping rates. At checkout the browser sends only variant ids, quantities, destination and the chosen rate id to `/api/checkout`, which re-prices every line and re-quotes shipping from Printful before creating a Stripe Checkout session.
 - `/api/webhook`: on `checkout.session.completed` it creates the matching Printful order. Orders are drafts unless `PRINTFUL_AUTO_CONFIRM=true`.
 
 ## Setup
