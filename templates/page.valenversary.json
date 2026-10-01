@@ -1,0 +1,10 @@
+{
+  "layout": "valenversary",
+  "sections": {
+    "main": {
+      "type": "valenversary-page",
+      "settings": {}
+    }
+  },
+  "order": ["main"]
+}
