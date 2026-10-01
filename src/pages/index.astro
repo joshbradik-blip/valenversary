@@ -1,0 +1,64 @@
+---
+import Base from '../layouts/Base.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { listProducts, type ProductSummary } from '../lib/printful';
+
+let products: ProductSummary[] = [];
+try {
+  products = (await listProducts()).slice(0, 4);
+} catch (err) {
+  console.error('home: products unavailable', err);
+}
+
+const heart = `<svg viewBox="0 0 100 90" fill="none" aria-hidden="true"><path d="M50 84C20 60 6 44 6 27 6 14 16 6 28 6c9 0 17 5 22 13C55 11 63 6 72 6c12 0 22 8 22 21 0 17-14 33-44 57Z" fill="#8d0f4b"/></svg>`;
+---
+<Base>
+  <div class="wrap">
+    <section class="hero panel">
+      <div>
+        <p class="eyebrow">Keepsakes for two</p>
+        <h1>Gifts that speak to the heart</h1>
+        <p>Valenversary is the day you chose each other. Celebrate it every year with pieces made to be kept.</p>
+        <a class="btn solid" href="/shop">Shop the collection <span class="dot">↗</span></a>
+      </div>
+      <div class="hero-art" set:html={heart} />
+    </section>
+
+    <section class="story" id="story">
+      <div class="story-art" set:html={heart} />
+      <div>
+        <p class="eyebrow">Our story</p>
+        <h2>A holiday of your own</h2>
+        <p>Some anniversaries are tied to a date on a certificate. A Valenversary is tied to a feeling: the moment you knew. Make it a tradition worth marking.</p>
+        <a class="btn" href="/shop">Browse keepsakes <span class="dot">↗</span></a>
+      </div>
+    </section>
+
+    <section class="story flip">
+      <div class="story-art" set:html={heart} />
+      <div>
+        <p class="eyebrow">Made on demand</p>
+        <h2>Printed just for you</h2>
+        <p>Every piece is produced when you order, so nothing sits on a shelf. It arrives at your door ready to wrap.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="band">
+    <div class="wrap">
+      <h2>Love, renewed every year</h2>
+      <p>Pick something small, make it personal, and give it on your Valenversary.</p>
+      <div class="marquee" aria-hidden="true">Valentine · Anniversary · Forever</div>
+    </div>
+  </section>
+
+  <div class="wrap" style="padding-block: 5rem 1rem">
+    <div class="section-head">
+      <h2>Order with confidence</h2>
+      <a class="btn" href="/shop">Explore all <span class="dot">↗</span></a>
+    </div>
+    {products.length
+      ? <div class="grid">{products.map((p) => <ProductCard product={p} />)}</div>
+      : <div class="notice">New keepsakes are on the way. Check back soon.</div>}
+  </div>
+</Base>

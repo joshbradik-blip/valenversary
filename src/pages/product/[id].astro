@@ -1,0 +1,63 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getProduct, formatPrice } from '../../lib/printful';
+
+const { id } = Astro.params;
+if (!id || !/^\d+$/.test(id)) return Astro.redirect('/shop');
+
+let product;
+try {
+  product = await getProduct(id);
+} catch {
+  return new Response(null, { status: 404 });
+}
+const variants = product.variants.filter((v) => v.available);
+const data = {
+  productId: product.id,
+  name: product.name,
+  variants: variants.map((v) => ({ id: v.id, name: v.name, priceCents: v.priceCents, image: v.image || product.image })),
+};
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=300');
+---
+<Base title={product.name}>
+  <div class="wrap pdp">
+    <div class="pdp-img"><img id="pdp-image" src={variants[0]?.image || product.image} alt={product.name} width="800" height="800" /></div>
+    <div>
+      <p class="eyebrow">Valenversary</p>
+      <h1>{product.name}</h1>
+      {variants.length ? (
+        <>
+          <div class="price" id="pdp-price">{formatPrice(variants[0].priceCents)}</div>
+          <div class="field">
+            <label for="variant" class="eyebrow">Option</label>
+            <select id="variant">{variants.map((v) => <option value={v.id}>{v.name.replace(product.name, '').replace(/^[\s/-]+/, '') || v.name}</option>)}</select>
+          </div>
+          <button class="btn solid" id="add">Add to cart <span class="dot">↗</span></button>
+          <p id="added" class="eyebrow" style="margin-top:1rem" aria-live="polite"></p>
+        </>
+      ) : <div class="notice">This item is currently unavailable.</div>}
+    </div>
+  </div>
+  <script type="application/json" id="product-data" set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+  <script>
+    import { addToCart, money } from '../../scripts/cart';
+    const node = document.getElementById('product-data');
+    if (node) {
+      const data = JSON.parse(node.textContent!);
+      const select = document.getElementById('variant') as HTMLSelectElement;
+      const price = document.getElementById('pdp-price')!;
+      const image = document.getElementById('pdp-image') as HTMLImageElement;
+      const current = () => data.variants.find((v: any) => String(v.id) === select.value);
+      select.addEventListener('change', () => {
+        const v = current();
+        price.textContent = money(v.priceCents);
+        if (v.image) image.src = v.image;
+      });
+      document.getElementById('add')!.addEventListener('click', () => {
+        const v = current();
+        addToCart({ id: v.id, productId: data.productId, name: data.name, variant: v.name, priceCents: v.priceCents, image: v.image });
+        document.getElementById('added')!.textContent = 'Added to your cart';
+      });
+    }
+  </script>
+</Base>

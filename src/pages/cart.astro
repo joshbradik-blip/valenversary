@@ -1,0 +1,82 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Cart">
+  <div class="wrap cart">
+    <h1>Your cart</h1>
+    <div id="lines"></div>
+    <div id="summary" hidden>
+      <div class="total"><span>Subtotal</span><span id="subtotal"></span></div>
+      <p class="eyebrow">Shipping and taxes are calculated at checkout.</p>
+      <button class="btn solid" id="checkout">Checkout <span class="dot">↗</span></button>
+      <div class="error" id="error" role="alert"></div>
+    </div>
+    <div id="empty" class="notice" hidden>Your cart is empty. <a href="/shop">Browse the shop</a>.</div>
+  </div>
+  <script>
+    import { onCartChange, setQty, money, type CartItem } from '../scripts/cart';
+
+    const lines = document.getElementById('lines')!;
+    const summary = document.getElementById('summary')!;
+    const empty = document.getElementById('empty')!;
+
+    function render(items: CartItem[]) {
+      lines.replaceChildren();
+      summary.hidden = items.length === 0;
+      empty.hidden = items.length !== 0;
+      let subtotal = 0;
+      for (const i of items) {
+        subtotal += i.priceCents * i.qty;
+        const row = document.createElement('div');
+        row.className = 'line';
+        const img = document.createElement('img');
+        img.src = i.image; img.alt = ''; img.width = 90; img.height = 90;
+        const info = document.createElement('div');
+        const name = document.createElement('strong');
+        name.textContent = i.name;
+        const variant = document.createElement('div');
+        variant.className = 'eyebrow';
+        variant.textContent = i.variant.replace(i.name, '').replace(/^[\s/-]+/, '');
+        const qty = document.createElement('div');
+        qty.className = 'qty';
+        const minus = Object.assign(document.createElement('button'), { textContent: '−', ariaLabel: 'Decrease quantity' });
+        const plus = Object.assign(document.createElement('button'), { textContent: '+', ariaLabel: 'Increase quantity' });
+        minus.onclick = () => setQty(i.id, i.qty - 1);
+        plus.onclick = () => setQty(i.id, i.qty + 1);
+        const n = document.createElement('span');
+        n.textContent = String(i.qty);
+        qty.append(minus, n, plus);
+        const remove = Object.assign(document.createElement('button'), { className: 'remove', textContent: 'Remove' });
+        remove.onclick = () => setQty(i.id, 0);
+        info.append(name, variant, qty, remove);
+        const price = document.createElement('div');
+        price.textContent = money(i.priceCents * i.qty);
+        row.append(img, info, price);
+        lines.append(row);
+      }
+      document.getElementById('subtotal')!.textContent = money(subtotal);
+    }
+    onCartChange(render);
+
+    const button = document.getElementById('checkout') as HTMLButtonElement;
+    const error = document.getElementById('error')!;
+    button.addEventListener('click', async () => {
+      error.textContent = '';
+      button.disabled = true;
+      try {
+        const { readCart } = await import('../scripts/cart');
+        const res = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: readCart().map((i) => ({ id: i.id, qty: i.qty })) }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.url) throw new Error(body.error ?? 'Checkout failed');
+        window.location.href = body.url;
+      } catch (e) {
+        error.textContent = e instanceof Error ? e.message : 'Checkout failed';
+        button.disabled = false;
+      }
+    });
+  </script>
+</Base>
