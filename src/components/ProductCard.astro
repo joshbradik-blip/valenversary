@@ -1,0 +1,9 @@
+---
+import { formatPrice, type ProductSummary } from '../lib/printful';
+const { product } = Astro.props as { product: ProductSummary };
+---
+<a class="card" href={`/product/${product.id}`}>
+  {product.image && <img src={product.image} alt={product.name} loading="lazy" width="400" height="400" />}
+  <h3>{product.name}</h3>
+  {product.priceFromCents !== null && <div class="price">From {formatPrice(product.priceFromCents)}</div>}
+</a>

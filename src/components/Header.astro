@@ -1,0 +1,17 @@
+---
+const links = [
+  { href: '/shop', label: 'Shop' },
+  { href: '/#story', label: 'Our Story', hide: true },
+];
+---
+<header class="site-header">
+  <div class="wrap">
+    <nav>
+      {links.map((l) => <a href={l.href} class={l.hide ? 'hide-sm' : ''}>{l.label}</a>)}
+    </nav>
+    <a class="logo" href="/">❀ Valenversary</a>
+    <nav>
+      <a class="cart-link" href="/cart">Cart<span class="cart-count" data-empty="true">0</span></a>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,25 @@
+---
+import Base from '../layouts/Base.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { listProducts, type ProductSummary } from '../lib/printful';
+
+let products: ProductSummary[] = [];
+let failed = false;
+try {
+  products = await listProducts();
+} catch (err) {
+  console.error('shop: products unavailable', err);
+  failed = true;
+}
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=300');
+---
+<Base title="Shop" description="Browse Valenversary keepsakes.">
+  <div class="wrap" style="padding-block: 3rem 2rem">
+    <div class="section-head"><h1>Shop</h1></div>
+    {failed
+      ? <div class="notice">We couldn't load the shop just now. Please refresh in a moment.</div>
+      : products.length
+        ? <div class="grid">{products.map((p) => <ProductCard product={p} />)}</div>
+        : <div class="notice">New keepsakes are on the way. Check back soon.</div>}
+  </div>
+</Base>
