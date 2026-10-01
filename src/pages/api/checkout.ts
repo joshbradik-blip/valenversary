@@ -34,6 +34,8 @@ export const POST: APIRoute = async ({ request }) => {
     if (!rate) return json({ error: 'That shipping option is no longer available. Please re-select.' }, 409);
 
     const site = env('SITE_URL') ?? new URL(request.url).origin;
+    // Requires Stripe Tax to be activated on the account; opt in with STRIPE_AUTOMATIC_TAX=true.
+    const tax = env('STRIPE_AUTOMATIC_TAX') === 'true';
 
     const session = await stripe().checkout.sessions.create({
       mode: 'payment',
@@ -42,13 +44,16 @@ export const POST: APIRoute = async ({ request }) => {
         price_data: {
           currency: variants[n].currency,
           unit_amount: variants[n].priceCents,
+          ...(tax ? { tax_behavior: 'exclusive' as const } : {}),
           product_data: {
+            ...(tax ? { tax_code: 'txcd_99999999' } : {}), // general tangible goods
             name: variants[n].name,
             ...(variants[n].image ? { images: [variants[n].image] } : {}),
             metadata: { sync_variant_id: String(i.id) },
           },
         },
       })),
+      ...(tax ? { automatic_tax: { enabled: true } } : {}),
       shipping_address_collection: { allowed_countries: [destination.country as 'US' | 'CA'] },
       phone_number_collection: { enabled: true },
       shipping_options: [
@@ -56,6 +61,7 @@ export const POST: APIRoute = async ({ request }) => {
           shipping_rate_data: {
             type: 'fixed_amount',
             display_name: rate.name,
+            ...(tax ? { tax_behavior: 'exclusive' as const, tax_code: 'txcd_92010001' } : {}), // shipping
             fixed_amount: { amount: rate.rateCents, currency: rate.currency },
             ...(rate.minDays && rate.maxDays
               ? {
