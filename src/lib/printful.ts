@@ -88,6 +88,8 @@ export async function getVariant(syncVariantId: number | string) {
 }
 
 export interface Destination {
+  address1: string;
+  city: string;
   country: string;
   state?: string;
   zip: string;
@@ -111,7 +113,7 @@ export async function getShippingRates(
   const rates = await pf<any[]>('/shipping/rates', {
     method: 'POST',
     body: JSON.stringify({
-      recipient: { country_code: dest.country, state_code: dest.state || undefined, zip: dest.zip },
+      recipient: { address1: dest.address1, city: dest.city, country_code: dest.country, state_code: dest.state || undefined, zip: dest.zip },
       items: items.map((i, n) => ({ variant_id: variants[n].catalogVariantId, quantity: i.qty })),
       currency: 'USD',
     }),

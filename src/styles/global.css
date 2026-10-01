@@ -113,3 +113,6 @@ h3 { font-size: 1.5rem; }
 .rate { display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center; padding: .8rem 1rem; border: 1px solid var(--blush-deep); border-radius: 12px; background: #fff; color: var(--ink); cursor: pointer; }
 .sum-row { display: flex; justify-content: space-between; padding: .3rem 0; color: var(--muted); }
 @media (max-width: 640px) { .ship-row { grid-template-columns: 1fr 1fr; } .ship-row select, .ship-row button { grid-column: 1 / -1; } }
+
+.ship-addr { grid-template-columns: 1.6fr 1fr; margin-bottom: .6rem; }
+@media (max-width: 640px) { .ship-addr { grid-template-columns: 1fr; } }
