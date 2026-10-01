@@ -1,17 +1,14 @@
 ---
-const links = [
-  { href: '/shop', label: 'Shop' },
-  { href: '/#story', label: 'Our Story', hide: true },
-];
+interface Props { overlay?: boolean }
+const { overlay = false } = Astro.props;
 ---
-<header class="site-header">
+<header class:list={['site-header', { overlay }]}>
   <div class="wrap">
+    <a class="logo" href="/">Valen<em>versary</em></a>
     <nav>
-      {links.map((l) => <a href={l.href} class={l.hide ? 'hide-sm' : ''}>{l.label}</a>)}
-    </nav>
-    <a class="logo" href="/">❀ Valenversary</a>
-    <nav>
+      <a href="/shop" class="hide-sm">Shop</a>
       <a class="cart-link" href="/cart">Cart<span class="cart-count" data-empty="true">0</span></a>
+      <a class="pill" href="/shop">Shop the Collection</a>
     </nav>
   </div>
 </header>
