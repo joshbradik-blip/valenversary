@@ -135,7 +135,7 @@ import Base from '../layouts/Base.astro';
           body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), destination: destination() }),
         });
         const body = await res.json();
-        if (!res.ok) throw new Error(body.error ?? 'Could not get shipping');
+        if (!res.ok) throw new Error([body.error ?? 'Could not get shipping', body.detail].filter(Boolean).join(' — '));
         rates = body.rates;
         quotedFor = cartKey(items);
         chosen = rates[0] ?? null;
