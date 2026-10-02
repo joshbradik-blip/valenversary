@@ -1,0 +1,136 @@
+---
+interface Props { enabled: boolean }
+const { enabled } = Astro.props;
+---
+<div class="moments" id="moments">
+  <h3>Share your Moments</h3>
+  <p>Drop a photo from your Valenversary.</p>
+  {enabled
+    ? <button class="btn solid" type="button" id="moment-open">Upload a photo <span class="dot">↗</span></button>
+    : <button class="btn solid" type="button" disabled>Photo uploads coming soon <span class="dot">↗</span></button>}
+  <p class="moment-thanks" id="moment-thanks" hidden>Thank you! We'll add your photo to the gallery once we've had a look.</p>
+</div>
+
+{enabled && (
+  <dialog class="moment-dialog" id="moment-dialog" aria-labelledby="moment-title">
+    <form id="moment-form" class="moment-form" novalidate>
+      <div class="moment-head">
+        <h3 id="moment-title">Share your <span class="accent">Moment</span></h3>
+        <button type="button" class="moment-close" id="moment-close" aria-label="Close">×</button>
+      </div>
+
+      <label class="moment-drop" id="moment-drop">
+        <input type="file" id="moment-file" accept="image/*" required />
+        <img id="moment-preview" alt="" hidden />
+        <span id="moment-drop-text">Tap to choose a photo<br /><small>or drag it here</small></span>
+      </label>
+
+      <label class="moment-field">
+        <span>Your first names</span>
+        <input name="names" maxlength="60" placeholder="Sam &amp; Alex" required autocomplete="off" />
+      </label>
+      <label class="moment-field">
+        <span>Caption <small>(optional)</small></span>
+        <input name="caption" maxlength="140" placeholder="Our 5th Valenversary in Paris" autocomplete="off" />
+      </label>
+      <label class="moment-field">
+        <span>Email <small>(optional, never shown)</small></span>
+        <input name="email" type="email" maxlength="254" placeholder="you@example.com" autocomplete="email" />
+      </label>
+      <label class="moment-hp" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+      <label class="moment-consent">
+        <input type="checkbox" name="consent" required />
+        <span>I own this photo and Valenversary may display it on the site.</span>
+      </label>
+
+      <p class="error" id="moment-error" role="alert"></p>
+      <button class="btn solid" type="submit" id="moment-submit">Send my photo <span class="dot">↗</span></button>
+    </form>
+  </dialog>
+)}
+
+<script>
+  const dialog = document.getElementById('moment-dialog') as HTMLDialogElement | null;
+  if (dialog) {
+    const form = document.getElementById('moment-form') as HTMLFormElement;
+    const fileInput = document.getElementById('moment-file') as HTMLInputElement;
+    const drop = document.getElementById('moment-drop')!;
+    const preview = document.getElementById('moment-preview') as HTMLImageElement;
+    const dropText = document.getElementById('moment-drop-text')!;
+    const error = document.getElementById('moment-error')!;
+    const submit = document.getElementById('moment-submit') as HTMLButtonElement;
+    let photo: File | null = null;
+
+    document.getElementById('moment-open')!.addEventListener('click', () => dialog.showModal());
+    document.getElementById('moment-close')!.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+
+    function choose(file: File | undefined) {
+      if (!file) return;
+      if (!file.type.startsWith('image/') && !/\.(heic|heif)$/i.test(file.name)) {
+        error.textContent = 'Please choose a photo.';
+        return;
+      }
+      error.textContent = '';
+      photo = file;
+      if (preview.src) URL.revokeObjectURL(preview.src);
+      preview.src = URL.createObjectURL(file);
+      preview.hidden = false;
+      dropText.hidden = true;
+    }
+    fileInput.addEventListener('change', () => choose(fileInput.files?.[0]));
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault();
+      drop.classList.remove('over');
+      choose(e.dataTransfer?.files?.[0]);
+    });
+
+    // Re-encode to a JPEG no larger than 2000px: keeps uploads small and strips EXIF (incl. GPS).
+    async function toJpeg(file: File): Promise<Blob> {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      return new Promise((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('encode failed'))), 'image/jpeg', 0.85));
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      error.textContent = '';
+      const data = new FormData(form);
+      if (!photo) { error.textContent = 'Please choose a photo.'; return; }
+      if (!String(data.get('names') ?? '').trim()) { error.textContent = 'Add your first names.'; return; }
+      if (!data.get('consent')) { error.textContent = 'Please confirm you own the photo and agree to us sharing it.'; return; }
+
+      submit.disabled = true;
+      try {
+        let jpeg: Blob;
+        try {
+          jpeg = await toJpeg(photo);
+        } catch {
+          throw new Error("We couldn't read that photo. Please try a JPEG or PNG.");
+        }
+        data.set('photo', jpeg, 'moment.jpg');
+        const res = await fetch('/api/moments', { method: 'POST', body: data });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error ?? 'Upload failed. Please try again.');
+        form.reset();
+        photo = null;
+        preview.hidden = true;
+        dropText.hidden = false;
+        dialog.close();
+        document.getElementById('moment-thanks')!.hidden = false;
+      } catch (err) {
+        error.textContent = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  }
+</script>

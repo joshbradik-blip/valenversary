@@ -1,13 +1,25 @@
 ---
 import Base from '../layouts/Base.astro';
 import ProductCard from '../components/ProductCard.astro';
+import MomentsUpload from '../components/MomentsUpload.astro';
 import { listProducts, type ProductSummary } from '../lib/printful';
+import { listApprovedMoments, momentsEnabled, type PublicMoment } from '../lib/moments';
 
 let products: ProductSummary[] = [];
 try {
   products = (await listProducts()).slice(0, 4);
 } catch (err) {
   console.error('home: products unavailable', err);
+}
+
+const uploadsEnabled = momentsEnabled();
+let moments: PublicMoment[] = [];
+if (uploadsEnabled) {
+  try {
+    moments = await listApprovedMoments();
+  } catch (err) {
+    console.error('home: moments unavailable', err);
+  }
 }
 
 // Next Feb 14 (rolls over the day after). The client script below keeps it ticking in the visitor's timezone.
@@ -71,13 +83,31 @@ function countdown(now = new Date()) {
           {countdown().map((u) => <div class="unit"><b>{u.value}</b><span>{u.label}</span></div>)}
         </div>
       </div>
-      <div class="moments" id="moments">
-        <h3>Share your Moments</h3>
-        <p>Drop a photo from your Valenversary.</p>
-        <button class="btn solid" type="button" disabled>Photo uploads coming soon <span class="dot">↗</span></button>
-      </div>
+      <MomentsUpload enabled={uploadsEnabled} />
     </div>
   </section>
+
+  {moments.length > 0 && (
+    <section class="section gallery">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="titles">
+            <p class="eyebrow">Your Moments</p>
+            <h2>Loved, <span class="accent">again</span></h2>
+          </div>
+          <p class="lede">Photos from couples celebrating their Valenversary.</p>
+        </div>
+        <div class="moment-grid">
+          {moments.map((m) => (
+            <figure class="moment-card">
+              <img src={`/api/moments/${m.id}`} alt={m.caption || `${m.names}'s Valenversary`} loading="lazy" width="400" height="400" />
+              <figcaption><strong>{m.names}</strong>{m.caption && <span>{m.caption}</span>}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
 
   <script>
     const units = document.querySelectorAll<HTMLElement>('#countdown .unit b');
